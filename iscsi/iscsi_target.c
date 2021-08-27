@@ -1006,6 +1006,31 @@ int iscsit_setup_scsi_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
 
 	/* FIXME; Add checks for AdditionalHeaderSegment */
 
+	if (hdr->cdb) {
+		if (hdr->cdb[0] == RESERVE) {
+			pr_debug("[iscsit_setup_scsi_cmd] received RESERVE");
+ 			hdr->cdb[0] = PERSISTENT_RESERVE_OUT;
+			hdr->cdb[1] = 0x01;
+			hdr->cdb[2] = 0x03;
+			hdr->cdb[8] = 0x18;
+			hdr->flags = 0xa1;
+			hdr->data_length = cpu_to_be32(0x18);
+			payload_length = 0x18;
+			hton24(hdr->dlength, 0x18);
+		}
+		else if (hdr->cdb[0] == RELEASE) {
+			pr_debug("[iscsit_setup_scsi_cmd] received RELEASE");
+			hdr->cdb[0] = PERSISTENT_RESERVE_OUT;
+			hdr->cdb[1] = 0x02;
+			hdr->cdb[2] = 0x03;
+			hdr->cdb[8] = 0x18;
+			hdr->flags = 0xa1;
+			hdr->data_length = cpu_to_be32(0x18);
+			payload_length = 0x18;
+			hton24(hdr->dlength, 0x18);
+		}
+	}
+																														 	
 	if (!(hdr->flags & ISCSI_FLAG_CMD_WRITE) &&
 	    !(hdr->flags & ISCSI_FLAG_CMD_FINAL)) {
 		pr_err("ISCSI_FLAG_CMD_WRITE & ISCSI_FLAG_CMD_FINAL"
@@ -2641,7 +2666,14 @@ static int iscsit_handle_immediate_data(
 	}
 
 	WARN_ON_ONCE(iov_count > cmd->orig_iov_data_count);
-	rx_got = rx_data(conn, &cmd->iov_data[0], iov_count, rx_size);
+	if (hdr->cdb[0] == PERSISTENT_RESERVE_OUT && ((hdr->cdb[1] == 0x01) || (hdr->cdb[1] == 0x02)) ) {
+		//pr out release or reserve, we set the key later so don't get it now
+		rx_got = 24;
+ 		pr_debug("[iscsit_handle_immediate_data] set rx_got with no socket rcv");
+	}
+	else {
+ 		rx_got = rx_data(conn, &cmd->iov_data[0], iov_count, rx_size);
+	}
 
 	iscsit_unmap_iovec(cmd);
 
@@ -3238,6 +3270,14 @@ void iscsit_build_rsp_pdu(struct iscsi_cmd *cmd, struct iscsi_conn *conn,
 		" Response: 0x%02x, SAM Status: 0x%02x, CID: %hu\n",
 		cmd->init_task_tag, cmd->stat_sn, cmd->se_cmd.scsi_status,
 		cmd->se_cmd.scsi_status, conn->cid);
+
+	if (cmd->se_cmd.t_task_cdb) {
+		if (cmd->se_cmd.t_task_cdb[0] == PERSISTENT_RESERVE_OUT) {
+			pr_debug("[iscsit_build_rsp_pdu] modifying flags of PR Out Response");
+ 			hdr->flags = 0x80;
+ 			hdr->residual_count = cpu_to_be32(0);
+		}
+	}
 }
 EXPORT_SYMBOL(iscsit_build_rsp_pdu);
 
