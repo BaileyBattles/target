@@ -1008,7 +1008,7 @@ int iscsit_setup_scsi_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
 
 	if (hdr->cdb) {
 		if (hdr->cdb[0] == RESERVE) {
-			pr_info("[iscsit_setup_scsi_cmd] received RESERVE");
+			pr_debug("[iscsit_setup_scsi_cmd] received RESERVE");
  			hdr->cdb[0] = PERSISTENT_RESERVE_OUT;
 			hdr->cdb[1] = 0x01;
 			hdr->cdb[2] = 0x03;
@@ -1019,7 +1019,7 @@ int iscsit_setup_scsi_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd,
 			hton24(hdr->dlength, 0x18);
 		}
 		else if (hdr->cdb[0] == RELEASE) {
-			pr_info("[iscsit_setup_scsi_cmd] received RELEASE");
+			pr_debug("[iscsit_setup_scsi_cmd] received RELEASE");
 			hdr->cdb[0] = PERSISTENT_RESERVE_OUT;
 			hdr->cdb[1] = 0x02;
 			hdr->cdb[2] = 0x03;
@@ -2669,7 +2669,7 @@ static int iscsit_handle_immediate_data(
 	if (hdr->cdb[0] == PERSISTENT_RESERVE_OUT && ((hdr->cdb[1] == 0x01) || (hdr->cdb[1] == 0x02)) ) {
 		//pr out release or reserve, we set the key later so don't get it now
 		rx_got = 24;
- 		pr_info("[iscsit_handle_immediate_data] set rx_got with no socket rcv");
+ 		pr_debug("[iscsit_handle_immediate_data] set rx_got with no socket rcv");
 	}
 	else {
  		rx_got = rx_data(conn, &cmd->iov_data[0], iov_count, rx_size);
@@ -3273,7 +3273,7 @@ void iscsit_build_rsp_pdu(struct iscsi_cmd *cmd, struct iscsi_conn *conn,
 
 	if (cmd->se_cmd.t_task_cdb) {
 		if (cmd->se_cmd.t_task_cdb[0] == PERSISTENT_RESERVE_OUT) {
-			pr_info("[iscsit_build_rsp_pdu] modifying flags of PR Out Response");
+			pr_debug("[iscsit_build_rsp_pdu] modifying flags of PR Out Response");
  			hdr->flags = 0x80;
  			hdr->residual_count = cpu_to_be32(0);
 		}
