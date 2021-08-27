@@ -993,6 +993,15 @@ pscsi_execute_cmd(struct se_cmd *cmd)
 	}
 
 	if (sgl) {
+		char *buf;
+		buf = sg_virt(sgl);
+		if (buf && cmd->t_task_cdb[0] == PERSISTENT_RESERVE_OUT && ((buf && cmd->t_task_cdb[1] == 0x01) || (buf && cmd->t_task_cdb[1] == 0x02)) ) {
+			memset(buf, 0, 24);
+
+			buf[5] = 0x12;
+			buf[6] = 0x3a;
+			buf[7] = 0xbc;
+		}
 		ret = pscsi_map_sg(cmd, sgl, sgl_nents, req);
 		if (ret)
 			goto fail_put_request;
